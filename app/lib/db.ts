@@ -3,10 +3,12 @@ import { drizzle } from 'drizzle-orm/libsql'
 import * as schema from './schema'
 import path from 'path'
 
-const dbPath = path.resolve(process.cwd(), 'ourcwtch.db')
+const url = process.env.TURSO_DATABASE_URL || process.env.DATABASE_URL || `file:${path.resolve(process.cwd(), 'ourcwtch.db')}`
+const authToken = process.env.TURSO_AUTH_TOKEN || process.env.DATABASE_AUTH_TOKEN
 
 const client = createClient({
-  url: `file:${dbPath}`,
+  url,
+  ...(authToken ? { authToken } : {}),
 })
 
 // Auto-migration helper for missing tables and columns
