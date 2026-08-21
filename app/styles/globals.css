@@ -1,0 +1,149 @@
+/* ─── Color Palette Tokens ────────────────────────────────────────── */
+:root {
+  --bg-cream: #FCF5EE;
+  --bg-blush: #FFCEE3;
+  --bg-rose: #F75270;
+  --color-crimson: #D83B56;
+  --color-maroon: #3D1A28;
+  --color-plum: #2A1220;
+  
+  --font-serif: 'Fraunces', serif;
+  --font-handwriting: 'Dancing Script', cursive;
+  --font-body: 'Nunito', sans-serif;
+  
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-full: 9999px;
+  
+  --gradient-sound-card: linear-gradient(135deg, #FFCEE3 0%, #F75270 50%, #3D1A28 100%);
+  --gradient-navbar: linear-gradient(to right, #FFF2EB, #FFFFFF, #FFE4EF);
+  --gradient-dusk: linear-gradient(to bottom, #FFCEE3, #2A1220);
+  --gradient-soil: linear-gradient(to bottom, #4A2832, #2A1220);
+}
+
+/* ─── Reset & Base Typography ────────────────────────────────────── */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 100%;
+  min-height: 100vh;
+  background-color: var(--bg-cream);
+  color: var(--color-maroon);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+h1, h2, h3, .font-serif {
+  font-family: var(--font-serif);
+}
+
+.font-handwriting {
+  font-family: var(--font-handwriting);
+}
+
+.font-body {
+  font-family: var(--font-body);
+}
+
+/* ─── Glassmorphism Utilities ────────────────────────────────────── */
+.glass {
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 206, 227, 0.5);
+  box-shadow: 0 8px 32px 0 rgba(61, 26, 40, 0.06);
+}
+
+.glass-light {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+}
+
+.glass-dark {
+  background: rgba(42, 18, 32, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(247, 82, 112, 0.3);
+  color: #FFF2EB;
+}
+
+/* ─── LuxButton Base Styles ──────────────────────────────────────── */
+.lux-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #F75270 0%, #D83B56 100%);
+  color: #FFFFFF;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 14px;
+  padding: 12px 24px;
+  border-radius: var(--radius-full);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(216, 59, 86, 0.3);
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease;
+  user-select: none;
+}
+
+.lux-button:hover {
+  transform: scale(1.04) translateY(-1px);
+  box-shadow: 0 6px 20px rgba(216, 59, 86, 0.45);
+}
+
+.lux-button:active {
+  transform: scale(0.96);
+}
+
+/* ─── Keyframe Animations ────────────────────────────────────────── */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 10px rgba(247, 82, 112, 0.2); }
+  50% { box-shadow: 0 0 22px rgba(247, 82, 112, 0.6); }
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2s ease-in-out infinite;
+}
+
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  display: flex;
+  white-space: nowrap;
+  animation: marquee 40s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+@keyframes cardShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-10px); }
+  40%, 80% { transform: translateX(10px); }
+}
+
+.animate-shake {
+  animation: cardShake 0.4s ease-in-out;
+}

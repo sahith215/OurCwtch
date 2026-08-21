@@ -1,0 +1,13 @@
+node_modules
+dist
+.output
+.tanstack
+ourcwtch.db
+ourcwtch.db-journal
+*.log
+.env
+.env.local
+.vite-temp
+build
+.DS_Store
+Thumbs.db
