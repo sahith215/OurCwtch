@@ -1,8 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { handleApiRequest } from '../app/lib/apiRouter'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
+    const { handleApiRequest } = await import('../app/lib/apiRouter')
+
     const protocol = (req.headers['x-forwarded-proto'] as string) || 'https'
     const host = req.headers.host || 'localhost'
     const fullUrl = new URL(req.url || '/', `${protocol}://${host}`)
@@ -42,6 +43,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.end(Buffer.from(arrayBuffer))
   } catch (err: any) {
     console.error('Vercel API Error:', err)
-    res.status(500).json({ error: err.message, stack: err.stack })
+    res.setHeader('Content-Type', 'application/json')
+    res.status(500).end(JSON.stringify({ error: err?.message || 'Server error', stack: err?.stack }))
   }
 }
