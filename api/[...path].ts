@@ -28,7 +28,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const webRequest = new Request(fullUrl.toString(), {
       method: req.method,
       headers,
-      body: bodyBuffer,
+      body: bodyBuffer as any,
     })
 
     const response = await handleApiRequest(webRequest)

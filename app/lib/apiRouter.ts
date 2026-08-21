@@ -2,6 +2,7 @@ import { auth } from './auth'
 import { db } from './db'
 import {
   user,
+  account,
   passwordResetOtps,
   homeHero,
   birthdayWishes,
@@ -94,7 +95,7 @@ export async function handleApiRequest(request: Request): Promise<Response> {
     if (!u) return Response.json({ error: 'User not found' }, { status: 400 })
 
     const hashedPassword = await bcrypt.hash(newPassword, 10)
-    await db.update(user).set({ password: hashedPassword }).where(eq(user.id, u.id)).catch(() => {})
+    await db.update(account).set({ password: hashedPassword }).where(eq(account.userId, u.id)).catch(() => {})
     return Response.json({ success: true })
   }
 
