@@ -1,16 +1,16 @@
 import nodemailer from 'nodemailer'
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.ethereal.email',
-  port: Number(process.env.SMTP_PORT) || 587,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER || 'demo@ethereal.email',
-    pass: process.env.SMTP_PASS || 'demo123',
-  },
-})
-
 export async function sendOtpEmail(to: string, otp: string) {
+  const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.ethereal.email',
+    port: Number(process.env.SMTP_PORT) || 587,
+    secure: false,
+    auth: {
+      user: process.env.SMTP_USER || 'demo@ethereal.email',
+      pass: process.env.SMTP_PASS || 'demo123',
+    },
+  })
+
   const html = `
     <div style="background-color: #FCF5EE; padding: 32px; font-family: sans-serif; text-align: center; color: #3D1A28;">
       <h1 style="font-family: serif; color: #D83B56; margin-bottom: 16px;">OurCwtch Password Reset</h1>
