@@ -4,6 +4,8 @@ import { db } from './db'
 import * as schema from './schema'
 
 export const auth = betterAuth({
+  secret: process.env.BETTER_AUTH_SECRET || 'ourcwtch-secret-key-2026',
+  baseURL: process.env.BETTER_AUTH_URL || 'https://our-cwtch.vercel.app',
   database: drizzleAdapter(db, {
     provider: 'sqlite',
     schema,

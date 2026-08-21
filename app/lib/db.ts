@@ -3,11 +3,14 @@ import { drizzle } from 'drizzle-orm/libsql'
 import * as schema from './schema'
 import path from 'path'
 
-const url = process.env.TURSO_DATABASE_URL || process.env.DATABASE_URL || `file:${path.resolve(process.cwd(), 'ourcwtch.db')}`
+let rawUrl = process.env.TURSO_DATABASE_URL || process.env.DATABASE_URL || `file:${path.resolve(process.cwd(), 'ourcwtch.db')}`
+if (rawUrl.startsWith('libsql://')) {
+  rawUrl = rawUrl.replace('libsql://', 'https://')
+}
 const authToken = process.env.TURSO_AUTH_TOKEN || process.env.DATABASE_AUTH_TOKEN
 
 const client = createClient({
-  url,
+  url: rawUrl,
   ...(authToken ? { authToken } : {}),
 })
 
