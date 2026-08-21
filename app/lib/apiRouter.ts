@@ -98,6 +98,11 @@ export async function handleApiRequest(request: Request): Promise<Response> {
     return Response.json({ success: true })
   }
 
+  // Delegate all remaining /api/auth/* routes to Better Auth handler
+  if (path.startsWith('/api/auth/')) {
+    return auth.handler(request)
+  }
+
   // 5. Shared Meta Anniversary Date
   if (path === '/api/shared-meta/anniversary_date' && method === 'POST') {
     const { value } = await request.json().catch(() => ({}))

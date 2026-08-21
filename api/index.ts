@@ -7,6 +7,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const host = req.headers.host || 'localhost'
     const fullUrl = new URL(req.url || '/', `${protocol}://${host}`)
 
+    const headers = new Headers()
+    for (const [key, value] of Object.entries(req.headers)) {
+      if (value && key.toLowerCase() !== 'content-length') {
+        if (Array.isArray(value)) {
+          value.forEach((v) => headers.append(key, v))
+        } else {
+          headers.append(key, value)
+        }
+      }
+    }
+
     let bodyBuffer: Buffer | undefined = undefined
     if (!['GET', 'HEAD'].includes(req.method || '')) {
       if (req.body) {
@@ -16,7 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const webRequest = new Request(fullUrl.toString(), {
       method: req.method,
-      headers: req.headers as any,
+      headers,
       body: bodyBuffer,
     })
 
