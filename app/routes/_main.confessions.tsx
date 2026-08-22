@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PetalBlastCanvas } from '../components/PetalBlastCanvas'
+import { apiRequest, reportPersistenceError, reportPersistenceSuccess } from '../lib/persistence'
 
 interface ConfessionItem {
   id: string
@@ -64,10 +65,14 @@ function ConfessionsPage() {
 
     // Mark opened server side
     if (!item.openedAt) {
-      fetch(`/api/confessions/${item.id}/open`, { method: 'PATCH' }).catch(() => {})
-      setConfessionsList((prev) =>
-        prev.map((c) => (c.id === item.id ? { ...c, openedAt: new Date().toISOString() } : c))
-      )
+      void apiRequest(`/api/confessions/${item.id}/open`, { method: 'PATCH' })
+        .then(() => {
+          setConfessionsList((prev) =>
+            prev.map((c) => (c.id === item.id ? { ...c, openedAt: new Date().toISOString() } : c))
+          )
+          reportPersistenceSuccess('Confession opened')
+        })
+        .catch(reportPersistenceError)
     }
   }
 
@@ -82,15 +87,16 @@ function ConfessionsPage() {
     }
 
     try {
-      const res = await fetch('/api/confessions', {
+      const data = await apiRequest<ConfessionItem>('/api/confessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
-      const data = await res.json()
       setConfessionsList((prev) => [data, ...prev])
-    } catch {
-      // Fallback
+      reportPersistenceSuccess('Confession saved')
+    } catch (error) {
+      reportPersistenceError(error)
+      return
     }
 
     setShowComposer(false)

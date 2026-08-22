@@ -82,7 +82,7 @@ export const meets = sqliteTable('meets', {
   soundtrack: text('soundtrack'),
   moodTag: text('mood_tag'),
   timeOfDay: text('time_of_day').notNull(), // 'dawn' | 'day' | 'dusk' | 'night'
-  order: integer('order').notNull(),
+  order: integer('order_num').notNull(),
   isUpcoming: integer('is_upcoming', { mode: 'boolean' }).default(false),
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
 })

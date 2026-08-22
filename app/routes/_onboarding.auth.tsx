@@ -9,6 +9,7 @@ function AuthPage() {
   const navigate = useNavigate()
   const [selectedRole, setSelectedRole] = useState<'Husband' | 'Wife' | null>(null)
   const [isTaken, setIsTaken] = useState<boolean | null>(null)
+  const [showRolePicker, setShowRolePicker] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
@@ -28,13 +29,13 @@ function AuthPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedRole) return
     setLoading(true)
     setErrorMsg('')
 
     try {
-      const endpoint = isTaken ? '/api/auth/sign-in/email' : '/api/auth/sign-up/email'
-      const bodyPayload = isTaken
+      const endpoint = selectedRole ? (isTaken ? '/api/auth/sign-in/email' : '/api/auth/sign-up/email') : '/api/auth/sign-in/email'
+      const isNewAccount = endpoint === '/api/auth/sign-up/email'
+      const bodyPayload = !selectedRole || isTaken
         ? { email, password }
         : { email, password, name: selectedRole, role: selectedRole, onboardingComplete: false }
 
@@ -47,7 +48,10 @@ function AuthPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        if (res.status === 409) {
+        if (!selectedRole) {
+          setShowRolePicker(true)
+          setErrorMsg('No account found. Choose a role to create your account.')
+        } else if (res.status === 409) {
           setErrorMsg('An account for this role already exists.')
         } else {
           setErrorMsg(data.message || 'Authentication failed.')
@@ -56,12 +60,8 @@ function AuthPage() {
         return
       }
 
-      // If onboarding is already complete, navigate to login mode setup (Date + Ritual)
-      if (data.user?.onboardingComplete) {
-        window.location.href = '/setup?mode=login'
-      } else {
-        window.location.href = '/setup'
-      }
+      // Only newly created accounts need the onboarding setup flow.
+      window.location.href = isNewAccount ? '/onboarding' : '/home'
     } catch {
       setErrorMsg('Something went wrong. Please try again.')
       setLoading(false)
@@ -75,11 +75,12 @@ function AuthPage() {
           OurCwtch ♥
         </h2>
         <p style={{ fontSize: '14px', color: '#3D1A28', marginTop: '4px', opacity: 0.8 }}>
-          Choose your role to enter
+          Enter your email and password
         </p>
       </div>
 
-      {/* Role Selection Cards */}
+      {/* Role selection is only needed when creating a new account. */}
+      {showRolePicker && (
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
         <div
           onClick={() => handleSelectRole('Husband')}
@@ -113,12 +114,11 @@ function AuthPage() {
           <div style={{ fontWeight: 700, marginTop: '8px', color: '#3D1A28' }}>Wife</div>
         </div>
       </div>
+      )}
 
-      {/* Form rendered after role select */}
-      {selectedRole && isTaken !== null && (
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ fontSize: '13px', color: '#F75270', fontWeight: 600, textAlign: 'center' }}>
-            {isTaken ? `Logging in as ${selectedRole}` : `Creating account for ${selectedRole}`}
+            {selectedRole ? (isTaken ? `Logging in as ${selectedRole}` : `Creating account for ${selectedRole}`) : 'Returning user login'}
           </div>
 
           <div>
@@ -168,7 +168,7 @@ function AuthPage() {
           )}
 
           <button className="lux-button" type="submit" disabled={loading} style={{ width: '100%', marginTop: '8px' }}>
-            {loading ? 'Please wait...' : isTaken ? 'Log In' : 'Sign Up'}
+            {loading ? 'Please wait...' : selectedRole && !isTaken ? 'Sign Up' : 'Log In'}
           </button>
 
           <div style={{ textAlign: 'center', marginTop: '4px' }}>
@@ -179,8 +179,7 @@ function AuthPage() {
               Forgot password?
             </Link>
           </div>
-        </form>
-      )}
+      </form>
     </div>
   )
 }

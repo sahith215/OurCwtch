@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MemoryCardModal } from '../components/MemoryCardModal'
+import { apiRequest, reportPersistenceError, reportPersistenceSuccess } from '../lib/persistence'
 
 interface MemoryItem {
   id: string
@@ -66,15 +67,16 @@ function UsGardenPage() {
     }
 
     try {
-      const res = await fetch('/api/memories', {
+      const data = await apiRequest<MemoryItem>('/api/memories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       })
-      const data = await res.json()
       setMemories((prev) => [...prev, data])
-    } catch {
-      setMemories((prev) => [...prev, { id: crypto.randomUUID(), ...payload }])
+      reportPersistenceSuccess('Fantasy saved')
+    } catch (error) {
+      reportPersistenceError(error)
+      return
     }
 
     setShowAddModal(false)
@@ -85,25 +87,29 @@ function UsGardenPage() {
   }
 
   const handleSaveEditedCaption = async (id: string) => {
-    setMemories((prev) => prev.map((m) => (m.id === id ? { ...m, note: editedCaption } : m)))
     try {
-      await fetch('/api/memories', {
+      await apiRequest('/api/memories', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, note: editedCaption }),
       })
-    } catch {
-      // Fallback
+      setMemories((prev) => prev.map((m) => (m.id === id ? { ...m, note: editedCaption } : m)))
+      reportPersistenceSuccess('Fantasy updated')
+    } catch (error) {
+      reportPersistenceError(error)
+      return
     }
     setEditingPhotoId(null)
   }
 
   const handleDeleteMemory = async (id: string) => {
-    setMemories((prev) => prev.filter((m) => m.id !== id))
     try {
-      await fetch(`/api/memories?id=${id}`, { method: 'DELETE' })
-    } catch {
-      // Fallback - already removed from state
+      await apiRequest(`/api/memories?id=${id}`, { method: 'DELETE' })
+      setMemories((prev) => prev.filter((m) => m.id !== id))
+      reportPersistenceSuccess('Fantasy deleted')
+    } catch (error) {
+      reportPersistenceError(error)
+      return
     }
   }
 
@@ -148,7 +154,7 @@ function UsGardenPage() {
             Our Growing Garden
           </h2>
           <p style={{ fontFamily: 'var(--font-handwriting)', fontSize: '20px', color: '#FFCEE3', marginTop: '4px' }}>
-            every flower planted is a memory saved
+            every flower planted is a fantasy saved
           </p>
         </div>
 
@@ -169,7 +175,7 @@ function UsGardenPage() {
           {memories.length === 0 ? (
             <div style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#FFCEE3', padding: '30px 0' }}>
               <p style={{ fontFamily: 'var(--font-serif)', fontSize: '18px', marginTop: '8px' }}>
-                Plant your first memory card below
+                Plant your first fantasy card below
               </p>
             </div>
           ) : (
@@ -231,7 +237,7 @@ function UsGardenPage() {
       {/* Primary Action Floating Button */}
       <div style={{ display: 'flex', justifyContent: 'center', margin: '32px 0' }}>
         <button className="lux-button" onClick={() => setShowAddModal(true)} style={{ padding: '14px 32px', fontSize: '15px' }}>
-          + Add Our Memory Card
+          + Add Our Fantasy Card
         </button>
       </div>
 
@@ -340,7 +346,7 @@ function UsGardenPage() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation()
-                        if (confirm('Delete this memory forever?')) handleDeleteMemory(mem.id)
+                        if (confirm('Delete this fantasy forever?')) handleDeleteMemory(mem.id)
                       }}
                       style={{
                         marginTop: '8px',
@@ -404,7 +410,7 @@ function UsGardenPage() {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h3 style={{ fontFamily: 'var(--font-serif)', color: '#3D1A28', fontSize: '22px' }}>
-                  Plant a New Memory Card
+                  Plant a New Fantasy Card
                 </h3>
                 <button onClick={() => setShowAddModal(false)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer' }}>
                   ✕
@@ -417,7 +423,7 @@ function UsGardenPage() {
                   required
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="Memory Title (e.g. Sunset Picnic)"
+                  placeholder="Fantasy Title (e.g. Sunset Picnic)"
                   style={{ padding: '10px 14px', borderRadius: '12px', border: '1px solid #FFCEE3' }}
                 />
                 <input
@@ -475,7 +481,7 @@ function UsGardenPage() {
                 </div>
 
                 <button className="lux-button" type="submit" style={{ marginTop: '8px' }}>
-                  Plant Memory
+                  Plant Fantasy
                 </button>
               </form>
             </motion.div>

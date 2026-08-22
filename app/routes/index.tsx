@@ -22,19 +22,8 @@ function GatePage() {
   const noY = useSpring(0, { stiffness: 180, damping: 20 })
 
   useEffect(() => {
-    // Check if user is already logged in & onboarded
-    fetch('/api/auth/get-session')
-      .then((r) => r.json())
-      .then((sess) => {
-        if (sess?.user?.isOnboarded) {
-          navigate({ to: '/home' })
-        } else {
-          setShowQuestion(true)
-        }
-      })
-      .catch(() => {
-        setShowQuestion(true)
-      })
+    // The root ritual is part of every entry, including returning logins.
+    setShowQuestion(true)
   }, [navigate])
 
   const handleNoHover = (e: React.MouseEvent<HTMLButtonElement>) => {

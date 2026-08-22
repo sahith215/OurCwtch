@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { SoundOfUsCard } from '../components/SoundOfUsCard'
 import { HillDivider } from '../components/HillDivider'
+import { apiRequest, reportPersistenceError, reportPersistenceSuccess } from '../lib/persistence'
 
 interface ProfileCardData {
   role: 'Husband' | 'Wife'
@@ -75,8 +76,8 @@ function AboutPage() {
       if (d.wife_nickname) setWifeProfile(prev => ({ ...prev, nicknameGivenByPartner: d.wife_nickname }))
     }).catch(() => {})
 
-    fetch('/api/profile-extras/Husband').then(r => r.json()).then(d => { if (d.tagline || d.favSong) setHusbandProfile(prev => ({ ...prev, ...d })) }).catch(() => {})
-    fetch('/api/profile-extras/Wife').then(r => r.json()).then(d => { if (d.tagline || d.favSong) setWifeProfile(prev => ({ ...prev, ...d })) }).catch(() => {})
+    fetch('/api/profile-extras/Husband').then(r => r.json()).then(d => { if (d && Object.keys(d).length > 0) setHusbandProfile(prev => ({ ...prev, ...d })) }).catch(() => {})
+    fetch('/api/profile-extras/Wife').then(r => r.json()).then(d => { if (d && Object.keys(d).length > 0) setWifeProfile(prev => ({ ...prev, ...d })) }).catch(() => {})
     fetch('/api/fun-facts').then(r => r.json()).then(d => { if (Array.isArray(d)) setFunFactsList(d.map((f: any) => f.body)) }).catch(() => {})
     fetch('/api/this-or-that').then(r => r.json()).then(d => { if (d && typeof d === 'object') setThisOrThatAnswers(d) }).catch(() => {})
   }, [])
@@ -97,51 +98,72 @@ function AboutPage() {
   const handleAddLineSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newLineText.trim() || !showAddLineModal) return
-    await fetch('/api/private-love-lines', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role: showAddLineModal, lineText: newLineText.trim() }),
-    }).catch(() => {})
+    try {
+      await apiRequest('/api/private-love-lines', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: showAddLineModal, lineText: newLineText.trim() }),
+      })
+      reportPersistenceSuccess('Love line saved')
+    } catch (error) {
+      reportPersistenceError(error)
+      return
+    }
     setShowAddLineModal(null)
     setNewLineText('')
   }
 
   const handleThisOrThatChoice = async (questionKey: string, choice: string) => {
-    setThisOrThatAnswers((prev) => ({
-      ...prev,
-      [questionKey]: { ...prev[questionKey], [currentUserRole]: choice },
-    }))
-
-    await fetch('/api/this-or-that', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ questionKey, answer: choice }),
-    }).catch(() => {})
+    try {
+      await apiRequest('/api/this-or-that', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questionKey, answer: choice }),
+      })
+      setThisOrThatAnswers((prev) => ({
+        ...prev,
+        [questionKey]: { ...prev[questionKey], [currentUserRole]: choice },
+      }))
+      reportPersistenceSuccess('Answer saved')
+    } catch (error) {
+      reportPersistenceError(error)
+    }
   }
 
   const handleAddFactSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newFactText.trim()) return
-    setFunFactsList((prev) => [...prev, newFactText.trim()])
-    await fetch('/api/fun-facts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ body: newFactText.trim() }),
-    }).catch(() => {})
+    try {
+      await apiRequest('/api/fun-facts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body: newFactText.trim() }),
+      })
+      setFunFactsList((prev) => [...prev, newFactText.trim()])
+      reportPersistenceSuccess('Fun fact saved')
+    } catch (error) {
+      reportPersistenceError(error)
+      return
+    }
     setShowAddFactModal(false)
     setNewFactText('')
   }
 
   const handleSaveProfile = async () => {
     if (!editProfileModal) return
-    if (editProfileModal.role === 'Husband') setHusbandProfile(editProfileModal)
-    else setWifeProfile(editProfileModal)
-
-    await fetch(`/api/profile-extras/${editProfileModal.role}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(editProfileModal),
-    }).catch(() => {})
+    try {
+      await apiRequest(`/api/profile-extras/${editProfileModal.role}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editProfileModal),
+      })
+      if (editProfileModal.role === 'Husband') setHusbandProfile(editProfileModal)
+      else setWifeProfile(editProfileModal)
+      reportPersistenceSuccess('Profile saved')
+    } catch (error) {
+      reportPersistenceError(error)
+      return
+    }
 
     setEditProfileModal(null)
   }

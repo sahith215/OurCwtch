@@ -16,7 +16,7 @@ import {
   playlistMeta,
   sharedMeta,
 } from './schema'
-import { eq, desc } from 'drizzle-orm'
+import { and, asc, eq, desc } from 'drizzle-orm'
 import bcrypt from 'bcryptjs'
 import { sendOtpEmail } from './emailService'
 
@@ -129,17 +129,22 @@ export async function handleApiRequest(request: Request): Promise<Response> {
     if (method === 'GET') {
       const husbandNick = await db.query.sharedMeta.findFirst({ where: eq(sharedMeta.key, 'husband_nickname') })
       const wifeNick = await db.query.sharedMeta.findFirst({ where: eq(sharedMeta.key, 'wife_nickname') })
+      const legacyNick = await db.query.sharedMeta.findFirst({ where: eq(sharedMeta.key, 'nickname') })
+      const session = await auth.api.getSession({ headers: request.headers })
+      const currentRole = (session?.user as any)?.role
       return Response.json({
-        husband_nickname: husbandNick?.value || '',
-        wife_nickname: wifeNick?.value || '',
+        husband_nickname: husbandNick?.value || (!wifeNick && legacyNick && currentRole === 'Wife' ? legacyNick.value : ''),
+        wife_nickname: wifeNick?.value || (!husbandNick && legacyNick && currentRole === 'Husband' ? legacyNick.value : ''),
       })
     }
     if (method === 'POST') {
       const { value, key: nickKey } = await request.json().catch(() => ({}))
       if (!value) return Response.json({ error: 'Value required' }, { status: 400 })
 
-      // Accept explicit key or default to 'nickname'
-      const metaKey = nickKey || 'nickname'
+      const session = await auth.api.getSession({ headers: request.headers })
+      const currentRole = (session?.user as any)?.role
+      // The nickname entered during onboarding belongs to the partner.
+      const metaKey = nickKey || (currentRole === 'Wife' ? 'husband_nickname' : 'wife_nickname')
 
       const existing = await db.query.sharedMeta.findFirst({
         where: eq(sharedMeta.key, metaKey),
@@ -150,6 +155,50 @@ export async function handleApiRequest(request: Request): Promise<Response> {
       } else {
         await db.update(sharedMeta).set({ value }).where(eq(sharedMeta.key, metaKey))
       }
+      return Response.json({ success: true })
+    }
+  }
+
+  // Persistent interaction state shared by the couple's dashboards
+  if (path === '/api/dashboard-state') {
+    if (method === 'GET') {
+      const key = new URL(request.url).searchParams.get('key')
+      const records = key
+        ? await db.query.sharedMeta.findMany({ where: eq(sharedMeta.key, `dashboard:${key}`) })
+        : await db.query.sharedMeta.findMany()
+      const state: Record<string, unknown> = {}
+      for (const record of records) {
+        if (record.key.startsWith('dashboard:')) {
+          try {
+            state[record.key.replace('dashboard:', '')] = JSON.parse(record.value)
+          } catch {
+            state[record.key.replace('dashboard:', '')] = record.value
+          }
+        }
+      }
+      return Response.json(key ? state[key] ?? null : state)
+    }
+
+    if (method === 'PUT') {
+      const { key, value } = await request.json().catch(() => ({}))
+      if (!key || typeof key !== 'string' || typeof value === 'undefined') {
+        return Response.json({ error: 'A state key and value are required' }, { status: 400 })
+      }
+      const storageKey = `dashboard:${key}`
+      const serializedValue = JSON.stringify(value)
+      const existing = await db.query.sharedMeta.findFirst({ where: eq(sharedMeta.key, storageKey) })
+      if (existing) {
+        await db.update(sharedMeta).set({ value: serializedValue }).where(eq(sharedMeta.key, storageKey))
+      } else {
+        await db.insert(sharedMeta).values({ key: storageKey, value: serializedValue })
+      }
+      return Response.json({ key, value })
+    }
+
+    if (method === 'DELETE') {
+      const key = new URL(request.url).searchParams.get('key')
+      if (!key) return Response.json({ error: 'A state key is required' }, { status: 400 })
+      await db.delete(sharedMeta).where(eq(sharedMeta.key, `dashboard:${key}`))
       return Response.json({ success: true })
     }
   }
@@ -210,7 +259,7 @@ export async function handleApiRequest(request: Request): Promise<Response> {
   // 11. Memories
   if (path === '/api/memories') {
     if (method === 'GET') {
-      const list = await db.query.memoryCards.findMany({ orderBy: [desc(memoryCards.reasonNumber)] })
+      const list = await db.query.memoryCards.findMany({ orderBy: [asc(memoryCards.reasonNumber)] })
       return Response.json(list)
     }
     if (method === 'POST') {
@@ -301,6 +350,9 @@ export async function handleApiRequest(request: Request): Promise<Response> {
     }
     if (method === 'POST') {
       const body = await request.json().catch(() => ({}))
+      if (Array.isArray(body.photoUrls) && JSON.stringify(body.photoUrls).length > 900_000) {
+        return Response.json({ error: 'Photos are too large. Please choose fewer or smaller images.' }, { status: 413 })
+      }
       const id = crypto.randomUUID()
       const photoUrlStr = Array.isArray(body.photoUrls) ? JSON.stringify(body.photoUrls) : (body.photoUrl || '')
       const newMeet = {
@@ -346,25 +398,47 @@ export async function handleApiRequest(request: Request): Promise<Response> {
     }
     if (method === 'PUT') {
       const body = await request.json().catch(() => ({}))
+      const profileData = {
+        tagline: body.tagline || null,
+        favSong: body.favSong || null,
+        comfortFood: body.comfortFood || null,
+        loveLanguage: body.loveLanguage || null,
+        quirk: body.quirk || null,
+        obsession: body.obsession || null,
+        photoUrl: body.photoUrl || null,
+      }
       const existing = await db.query.profileExtras.findFirst({ where: eq(profileExtras.role, role) })
       if (existing) {
-        await db.update(profileExtras).set(body).where(eq(profileExtras.role, role))
+        await db.update(profileExtras).set(profileData).where(eq(profileExtras.role, role))
       } else {
-        await db.insert(profileExtras).values({ role, ...body })
+        await db.insert(profileExtras).values({ role, ...profileData })
       }
       return Response.json({ success: true })
     }
   }
 
   // 16. Private Love Lines
-  if (path === '/api/private-love-lines' && method === 'POST') {
-    const body = await request.json().catch(() => ({}))
-    const session = await auth.api.getSession({ headers: request.headers })
-    const authorRole = (session?.user as any)?.role || 'Husband'
-    const targetRole = authorRole === 'Husband' ? 'Wife' : 'Husband'
-    const id = crypto.randomUUID()
-    await db.insert(privateLoveLines).values({ id, authorRole, targetRole, ...body })
-    return Response.json({ id, authorRole, targetRole, ...body })
+  if (path === '/api/private-love-lines') {
+    if (method === 'GET') {
+      const role = new URL(request.url).searchParams.get('role')
+      if (role !== 'Husband' && role !== 'Wife') return Response.json({ error: 'Invalid role' }, { status: 400 })
+      const targetRole = role === 'Husband' ? 'Wife' : 'Husband'
+      const line = await db.query.privateLoveLines.findFirst({
+        where: and(eq(privateLoveLines.authorRole, targetRole), eq(privateLoveLines.targetRole, role)),
+        orderBy: [desc(privateLoveLines.createdAt)],
+      })
+      return Response.json(line || {})
+    }
+    if (method === 'POST') {
+      const body = await request.json().catch(() => ({}))
+      if (!body.lineText?.trim()) return Response.json({ error: 'Line text is required' }, { status: 400 })
+      const session = await auth.api.getSession({ headers: request.headers })
+      const authorRole = (session?.user as any)?.role || 'Husband'
+      const targetRole = authorRole === 'Husband' ? 'Wife' : 'Husband'
+      const id = crypto.randomUUID()
+      await db.insert(privateLoveLines).values({ id, authorRole, targetRole, lineText: body.lineText.trim() })
+      return Response.json({ id, authorRole, targetRole, lineText: body.lineText.trim() })
+    }
   }
 
   // 17. This or That
@@ -381,8 +455,16 @@ export async function handleApiRequest(request: Request): Promise<Response> {
     }
     if (method === 'POST') {
       const { questionKey, answer } = await request.json().catch(() => ({}))
+      if (!questionKey || !answer) return Response.json({ error: 'Question and answer are required' }, { status: 400 })
       const session = await auth.api.getSession({ headers: request.headers })
       const role = (session?.user as any)?.role || 'Husband'
+      const existing = await db.query.thisOrThatAnswers.findFirst({
+        where: and(eq(thisOrThatAnswers.role, role), eq(thisOrThatAnswers.questionKey, questionKey)),
+      })
+      if (existing) {
+        await db.update(thisOrThatAnswers).set({ answer }).where(eq(thisOrThatAnswers.id, existing.id))
+        return Response.json({ id: existing.id, role, questionKey, answer })
+      }
       const id = crypto.randomUUID()
       await db.insert(thisOrThatAnswers).values({ id, role, questionKey, answer })
       return Response.json({ id, role, questionKey, answer })
@@ -397,11 +479,14 @@ export async function handleApiRequest(request: Request): Promise<Response> {
     }
     if (method === 'POST') {
       const body = await request.json().catch(() => ({}))
+      if (!body.body?.trim()) return Response.json({ error: 'Fact text is required' }, { status: 400 })
       const session = await auth.api.getSession({ headers: request.headers })
       const addedByRole = (session?.user as any)?.role || 'Husband'
       const id = crypto.randomUUID()
-      await db.insert(funFacts).values({ id, addedByRole, ...body })
-      return Response.json({ id, addedByRole, ...body })
+      const existing = await db.query.funFacts.findMany()
+      const order = existing.length + 1
+      await db.insert(funFacts).values({ id, body: body.body.trim(), order })
+      return Response.json({ id, addedByRole, body: body.body.trim(), order })
     }
   }
 

@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import React, { useState } from 'react'
 import { PetalBlastCanvas } from '../components/PetalBlastCanvas'
+import { apiRequest, reportPersistenceError } from '../lib/persistence'
 
 export const Route = createFileRoute('/_onboarding/setup')({
   component: OnboardingSetupPage,
@@ -8,8 +9,7 @@ export const Route = createFileRoute('/_onboarding/setup')({
 
 function OnboardingSetupPage() {
   const navigate = useNavigate()
-  const isLoginMode = typeof window !== 'undefined' && window.location.search.includes('mode=login')
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(isLoginMode ? 3 : 1)
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1)
 
   // Step 1: Instagram Bio & Persona
   const [tagline, setTagline] = useState('')
@@ -46,7 +46,7 @@ function OnboardingSetupPage() {
     e.preventDefault()
     // Save to profile extras server side
     try {
-      await fetch('/api/profile-extras/me', {
+      await apiRequest('/api/profile-extras/me', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -59,8 +59,8 @@ function OnboardingSetupPage() {
           obsession: fallInLoveStory || secretCodeWord,
         }),
       })
-    } catch {
-      // Fallback
+    } catch (error) {
+      reportPersistenceError(error)
     }
     setStep(3)
   }
@@ -78,17 +78,15 @@ function OnboardingSetupPage() {
       })
 
       if (!res.ok) {
+        reportPersistenceError(new Error('That anniversary date could not be saved.'))
         setIsShaking(true)
         setTimeout(() => setIsShaking(false), 400)
         return
       }
 
-      if (isLoginMode) {
-        setStep(5)
-      } else {
-        setStep(4)
-      }
+      setStep(4)
     } catch {
+      reportPersistenceError(new Error('That anniversary date could not be saved.'))
       setIsShaking(true)
       setTimeout(() => setIsShaking(false), 400)
     }
@@ -100,14 +98,15 @@ function OnboardingSetupPage() {
     if (!partnerNickname.trim()) return
 
     try {
-      await fetch('/api/shared-meta/nickname', {
+      await apiRequest('/api/shared-meta/nickname', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ value: partnerNickname.trim() }),
       })
       setStep(5)
-    } catch {
-      setStep(5)
+    } catch (error) {
+      reportPersistenceError(error)
+      return
     }
   }
 
@@ -145,7 +144,12 @@ function OnboardingSetupPage() {
           origin="center-radiating"
           density={275}
           onThinning={async () => {
-            await fetch('/api/user/complete-onboarding', { method: 'PATCH' })
+            try {
+              await apiRequest('/api/user/complete-onboarding', { method: 'PATCH' })
+            } catch (error) {
+              reportPersistenceError(error)
+              return
+            }
             navigate({ to: '/home' })
           }}
         />

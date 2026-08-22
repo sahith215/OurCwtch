@@ -91,7 +91,7 @@ export const MemoryCardModal: React.FC<MemoryCardModalProps> = ({
               fontSize: '12px',
             }}
           >
-            Reason #{memory.reasonNumber}
+            Fantasy #{memory.reasonNumber}
           </span>
           <button
             onClick={onClose}

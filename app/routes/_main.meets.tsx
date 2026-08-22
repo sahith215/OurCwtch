@@ -1,6 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import React, { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { apiRequest, reportPersistenceError, reportPersistenceSuccess } from '../lib/persistence'
+import { compressImage } from '../lib/image'
 
 interface MeetItem {
   id: string
@@ -67,6 +69,10 @@ function MeetsPage() {
     if (!title.trim() || !date) return
 
     const photos = selectedPhotos.length > 0 ? selectedPhotos : ['https://images.unsplash.com/photo-1518199266791-5375a83190b7?auto=format&fit=crop&w=800&q=80']
+    if (photos.reduce((total, photo) => total + photo.length, 0) > 900_000) {
+      reportPersistenceError(new Error('Please choose fewer or smaller photos.'))
+      return
+    }
 
     const newMeet: MeetItem = {
       id: crypto.randomUUID(),
@@ -83,15 +89,16 @@ function MeetsPage() {
     }
 
     try {
-      const res = await fetch('/api/meets', {
+      const data = await apiRequest<MeetItem>('/api/meets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newMeet),
       })
-      const data = await res.json()
-      setMeetsList((prev) => [...prev.filter((m) => !modalIsUpcoming || !m.isUpcoming), data])
-    } catch {
-      setMeetsList((prev) => [...prev, newMeet])
+      setMeetsList((prev) => [...prev, data])
+      reportPersistenceSuccess('Meet saved')
+    } catch (error) {
+      reportPersistenceError(error)
+      return
     }
 
     setShowModal(false)
@@ -106,9 +113,11 @@ function MeetsPage() {
 
   const handleDeleteMeet = async (id: string) => {
     try {
-      await fetch(`/api/meets?id=${id}`, { method: 'DELETE' })
-    } catch {
-      // Fallback
+      await apiRequest(`/api/meets?id=${id}`, { method: 'DELETE' })
+      reportPersistenceSuccess('Meet deleted')
+    } catch (error) {
+      reportPersistenceError(error)
+      return
     }
     setMeetsList((prev) => prev.filter((m) => m.id !== id))
     setActiveMeetDashboard(null)
@@ -619,12 +628,13 @@ function MeetsPage() {
                       onChange={(e) => {
                         const files = e.target.files
                         if (!files) return
-                        Array.from(files).forEach((file) => {
-                          const reader = new FileReader()
-                          reader.onload = (ev) => {
-                            setSelectedPhotos((prev) => [...prev, ev.target?.result as string])
+                        Array.from(files).forEach(async (file) => {
+                          try {
+                            const compressed = await compressImage(file)
+                            setSelectedPhotos((prev) => [...prev, compressed])
+                          } catch (error) {
+                            reportPersistenceError(error)
                           }
-                          reader.readAsDataURL(file)
                         })
                       }}
                     />
