@@ -4,28 +4,31 @@ export const HillDivider: React.FC = () => {
   return (
     <div
       style={{
-        position: 'relative',
-        left: '50%',
-        transform: 'translateX(-50%)',
-
         width: '100vw',
         height: '80px',
+        position: 'relative',
+
+        // Force full viewport width
+        marginLeft: 'calc(50% - 50vw)',
+        marginRight: 'calc(50% - 50vw)',
 
         marginTop: '32px',
         marginBottom: '32px',
 
-        overflow: 'hidden',
+        overflow: 'visible',
+        padding: 0,
       }}
     >
       <svg
         viewBox="0 0 1200 120"
         preserveAspectRatio="none"
-        width="100%"
-        height="100%"
+        xmlns="http://www.w3.org/2000/svg"
         style={{
           display: 'block',
-          width: '100%',
-          height: '100%',
+          width: '100vw',
+          height: '80px',
+          margin: 0,
+          padding: 0,
         }}
       >
         {/* Layer 1 - Muted Plum */}
