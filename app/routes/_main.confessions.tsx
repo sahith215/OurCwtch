@@ -480,24 +480,37 @@ function ConfessionsPage() {
             onClick={() => setActiveItem(null)}
           >
             <motion.div
+              className="confession-reader"
               initial={{ opacity: 0, scale: 0.85 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.85 }}
               onClick={(e) => e.stopPropagation()}
               style={{
                 width: '100%',
-                maxWidth: '520px',
-                borderRadius: '28px',
-                background: '#FFF',
-                backgroundImage: 'linear-gradient(rgba(232, 213, 200, 0.6) 1px, transparent 1px)',
-                backgroundSize: '100% 32px',
-                padding: '40px 36px',
-                border: '1.5px solid #E8D5C8',
-                boxShadow: '0 24px 60px rgba(0,0,0,0.3)',
+                maxWidth: '860px',
+                maxHeight: 'calc(100vh - 48px)',
+                overflowY: 'auto',
+                borderRadius: '24px',
+                background: '#FFFDF9',
+                backgroundImage: 'linear-gradient(90deg, transparent 0, transparent 44px, rgba(216, 59, 86, 0.14) 45px, transparent 46px), linear-gradient(rgba(232, 213, 200, 0.55) 1px, transparent 1px)',
+                backgroundSize: '100% 100%, 100% 32px',
+                padding: '44px 72px 48px',
+                border: '1px solid rgba(216, 59, 86, 0.28)',
+                boxShadow: '0 28px 80px rgba(42, 18, 32, 0.34), 0 0 0 8px rgba(255, 255, 255, 0.12)',
                 position: 'relative',
                 minHeight: '280px',
+                boxSizing: 'border-box',
               }}
             >
+              <div style={{ textAlign: 'center', marginBottom: '28px', paddingBottom: '18px', borderBottom: '1px solid rgba(216, 59, 86, 0.22)' }}>
+                <div style={{ color: '#D83B56', fontSize: '11px', fontWeight: 800, letterSpacing: '0.24em', textTransform: 'uppercase' }}>
+                  A sealed little truth
+                </div>
+                <div style={{ color: '#9B707A', fontFamily: 'var(--font-handwriting)', fontSize: '18px', marginTop: '5px' }}>
+                  for you, always
+                </div>
+              </div>
+
               <button
                 onClick={() => setActiveItem(null)}
                 style={{
@@ -514,7 +527,7 @@ function ConfessionsPage() {
                 ✕
               </button>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0px', paddingLeft: '12px' }}>
                 {unfoldedSentences.map((sentence, idx) => (
                   <motion.p
                     key={idx}
@@ -523,8 +536,8 @@ function ConfessionsPage() {
                     transition={{ duration: 0.6 }}
                     style={{
                       fontFamily: 'var(--font-handwriting)',
-                      fontSize: '22px',
-                      lineHeight: '32px', // EXACT 32px MATCH FOR RULED BACKGROUND LINES!
+                      fontSize: 'clamp(20px, 2.2vw, 26px)',
+                      lineHeight: '32px',
                       color: '#3D1A28',
                       margin: 0,
                     }}

@@ -147,3 +147,10 @@ h1, h2, h3, .font-serif {
 .animate-shake {
   animation: cardShake 0.4s ease-in-out;
 }
+
+@media (max-width: 640px) {
+  .confession-reader {
+    padding: 36px 28px 40px !important;
+    max-height: calc(100vh - 32px) !important;
+  }
+}
