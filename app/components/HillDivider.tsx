@@ -4,18 +4,29 @@ export const HillDivider: React.FC = () => {
   return (
     <div
       style={{
+        position: 'relative',
+        left: '50%',
+        transform: 'translateX(-50%)',
+
         width: '100vw',
-        minWidth: '100vw',
-        flexShrink: 0,
         height: '80px',
+
+        marginTop: '32px',
+        marginBottom: '32px',
+
         overflow: 'hidden',
-        margin: '32px 0 32px calc((100% - 100vw) / 2)',
       }}
     >
       <svg
         viewBox="0 0 1200 120"
         preserveAspectRatio="none"
-        style={{ width: '100%', height: '100%', display: 'block' }}
+        width="100%"
+        height="100%"
+        style={{
+          display: 'block',
+          width: '100%',
+          height: '100%',
+        }}
       >
         {/* Layer 1 - Muted Plum */}
         <path
@@ -23,12 +34,14 @@ export const HillDivider: React.FC = () => {
           fill="#2A1220"
           opacity="0.15"
         />
+
         {/* Layer 2 - Rose */}
         <path
           d="M0 75 Q400 40 800 85 T1200 65 L1200 120 L0 120 Z"
           fill="#F75270"
           opacity="0.25"
         />
+
         {/* Layer 3 - Blush Ground */}
         <path
           d="M0 90 Q350 60 700 95 T1200 80 L1200 120 L0 120 Z"
