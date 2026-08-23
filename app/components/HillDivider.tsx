@@ -2,7 +2,15 @@ import React from 'react'
 
 export const HillDivider: React.FC = () => {
   return (
-    <div style={{ width: '100%', height: '80px', overflow: 'hidden', position: 'relative', margin: '32px 0' }}>
+    <div
+      style={{
+        width: '100vw',
+        height: '80px',
+        overflow: 'hidden',
+        position: 'relative',
+        margin: '32px 0 32px calc(50% - 50vw)',
+      }}
+    >
       <svg
         viewBox="0 0 1200 120"
         preserveAspectRatio="none"
