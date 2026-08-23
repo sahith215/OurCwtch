@@ -5,6 +5,8 @@ export const HillDivider: React.FC = () => {
     <div
       style={{
         width: '100vw',
+        minWidth: '100vw',
+        flexShrink: 0,
         height: '80px',
         overflow: 'hidden',
         position: 'relative',
