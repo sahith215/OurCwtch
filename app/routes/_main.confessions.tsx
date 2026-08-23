@@ -13,6 +13,7 @@ interface ConfessionItem {
   openedAt?: string | null
   openedByRole?: string | null
   createdAt?: string
+  confessionNumber?: number
 }
 
 export const Route = createFileRoute('/_main/confessions')({
@@ -22,6 +23,7 @@ export const Route = createFileRoute('/_main/confessions')({
 function ConfessionsPage() {
   const [tab, setTab] = useState<'field' | 'sent'>('field')
   const [confessionsList, setConfessionsList] = useState<ConfessionItem[]>([])
+  const [currentRole, setCurrentRole] = useState<'Husband' | 'Wife' | null>(null)
 
   const [activeItem, setActiveItem] = useState<ConfessionItem | null>(null)
   const [unfoldedSentences, setUnfoldedSentences] = useState<string[]>([])
@@ -35,15 +37,24 @@ function ConfessionsPage() {
   const [newBody, setNewBody] = useState('')
   const [newTone, setNewTone] = useState<'sweet' | 'shy' | 'flirty' | 'vulnerable'>('sweet')
   const [newRevealAt, setNewRevealAt] = useState('')
+  const [editingItem, setEditingItem] = useState<ConfessionItem | null>(null)
 
   useEffect(() => {
+    fetch('/api/auth/get-session')
+      .then((r) => r.json())
+      .then((session) => {
+        const role = session?.user?.role
+        if (role === 'Husband' || role === 'Wife') setCurrentRole(role)
+      })
+      .catch(() => {})
+
     fetch(`/api/confessions?scope=${tab}`)
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) setConfessionsList(data)
       })
       .catch(() => {})
-  }, [tab])
+  }, [tab, currentRole])
 
   const handleItemClick = (e: React.MouseEvent, item: ConfessionItem) => {
     const isLocked = new Date(item.revealAt) > new Date()
@@ -88,18 +99,50 @@ function ConfessionsPage() {
 
     try {
       const data = await apiRequest<ConfessionItem>('/api/confessions', {
-        method: 'POST',
+        method: editingItem ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(editingItem ? { ...payload, id: editingItem.id } : payload),
       })
-      setConfessionsList((prev) => [data, ...prev])
-      reportPersistenceSuccess('Confession saved')
+      setConfessionsList((prev) => editingItem
+        ? prev.map((item) => (item.id === data.id ? data : item))
+        : [...prev, data].sort((a, b) => (a.createdAt || '').localeCompare(b.createdAt || '') || a.id.localeCompare(b.id)))
+      reportPersistenceSuccess(editingItem ? 'Confession updated' : 'Confession sealed')
     } catch (error) {
       reportPersistenceError(error)
       return
     }
 
     setShowComposer(false)
+    setNewBody('')
+    setNewTone('sweet')
+    setNewRevealAt('')
+    setEditingItem(null)
+  }
+
+  const openEditor = (item: ConfessionItem) => {
+    setEditingItem(item)
+    setNewBody(item.body)
+    setNewTone(item.toneTag)
+    setNewRevealAt(item.revealAt ? new Date(item.revealAt).toISOString().slice(0, 16) : '')
+    setShowComposer(true)
+  }
+
+  const handleDeleteConfession = async (item: ConfessionItem) => {
+    if (!window.confirm('Delete this confession permanently?')) return
+
+    try {
+      await apiRequest(`/api/confessions?id=${encodeURIComponent(item.id)}`, { method: 'DELETE' })
+      setConfessionsList((prev) => prev.filter((entry) => entry.id !== item.id))
+      setActiveItem(null)
+      reportPersistenceSuccess('Confession deleted')
+    } catch (error) {
+      reportPersistenceError(error)
+    }
+  }
+
+  const closeComposer = () => {
+    setShowComposer(false)
+    setEditingItem(null)
     setNewBody('')
     setNewTone('sweet')
     setNewRevealAt('')
@@ -144,8 +187,8 @@ function ConfessionsPage() {
         width: '100%',
         minHeight: 'calc(100vh - 72px)',
         backgroundColor: '#FCF5EE',
-        backgroundImage: 'radial-gradient(#E8D5C8 1px, transparent 1px)',
-        backgroundSize: '28px 28px',
+        backgroundImage: 'radial-gradient(#E8D5C8 1px, transparent 1px), linear-gradient(135deg, rgba(255, 206, 227, 0.24), transparent 42%)',
+        backgroundSize: '28px 28px, 100% 100%',
         padding: '32px 24px 120px 24px',
         position: 'relative',
         boxSizing: 'border-box',
@@ -169,14 +212,33 @@ function ConfessionsPage() {
           maxWidth: '56rem',
           margin: '0 auto 20px auto',
           display: 'flex',
-          justifyContent: 'space-between',
+          flexDirection: 'column',
+          gap: '16px',
           alignItems: 'center',
           position: 'relative',
           zIndex: 10,
         }}
       >
+        <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'end', gap: '20px', flexWrap: 'wrap' }}>
+          <div>
+            <span style={{ color: '#BC4F4F', fontSize: '11px', fontWeight: 800, letterSpacing: '0.2em', textTransform: 'uppercase' }}>
+              Our private constellation
+            </span>
+            <h1 style={{ fontFamily: 'var(--font-serif)', fontStyle: 'italic', fontSize: '42px', lineHeight: 1.05, color: '#3D1A28', marginTop: '6px' }}>
+              Confessions
+            </h1>
+            <p style={{ color: '#7D6670', fontSize: '14px', marginTop: '8px' }}>
+              Little truths, sealed with love and waiting in the stars.
+            </p>
+          </div>
+          <span style={{ color: '#D83B56', fontFamily: 'var(--font-handwriting)', fontSize: '20px' }}>
+            still choosing you
+          </span>
+        </div>
+
         {/* Two-tab switch */}
-        <div style={{ display: 'flex', gap: '8px', background: '#FFF', padding: '4px', borderRadius: '9999px', border: '1px solid #E8D5C8' }}>
+        <div style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
+          <div style={{ display: 'flex', gap: '8px', background: '#FFF', padding: '4px', borderRadius: '9999px', border: '1px solid #E8D5C8', boxShadow: '0 8px 20px rgba(61, 26, 40, 0.06)' }}>
           <button
             onClick={() => setTab('field')}
             style={{
@@ -207,14 +269,15 @@ function ConfessionsPage() {
           >
             Sent
           </button>
-        </div>
+          </div>
 
-        {/* Streak Counter */}
-        {streakCount >= 2 && (
-          <span style={{ fontSize: '13px', color: '#BC4F4F', fontWeight: 700 }}>
-            {streakCount}-day streak
-          </span>
-        )}
+          {/* Streak Counter */}
+          {streakCount >= 2 && (
+            <span style={{ fontSize: '13px', color: '#BC4F4F', fontWeight: 700 }}>
+              {streakCount}-day streak
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Constellation Container */}
@@ -362,8 +425,29 @@ function ConfessionsPage() {
                   </div>
 
                   <span style={{ fontSize: '11px', color: '#5C3A47', fontWeight: 700, marginTop: '6px' }}>
-                    Confession #{idx + 1}
+                    Confession #{item.confessionNumber || idx + 1}
                   </span>
+
+                  {tab === 'sent' && currentRole === item.authorRole && (
+                    <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }} onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        aria-label={`Edit confession ${idx + 1}`}
+                        onClick={() => openEditor(item)}
+                        style={{ border: '1px solid #E8D5C8', borderRadius: '9999px', background: '#FFF', color: '#5C3A47', padding: '4px 9px', cursor: 'pointer', fontSize: '11px' }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Delete confession ${idx + 1}`}
+                        onClick={() => void handleDeleteConfession(item)}
+                        style={{ border: '1px solid #E8D5C8', borderRadius: '9999px', background: '#FFF', color: '#BC4F4F', padding: '4px 9px', cursor: 'pointer', fontSize: '11px' }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
                 </motion.div>
               )
             })}
@@ -373,8 +457,8 @@ function ConfessionsPage() {
 
       {/* Floating Action Button */}
       <div style={{ position: 'fixed', bottom: '28px', right: '28px', zIndex: 8500 }}>
-        <button className="lux-button" onClick={() => setShowComposer(true)}>
-          + Leave a Confession
+        <button className="lux-button" onClick={() => { closeComposer(); setShowComposer(true) }}>
+          + {tab === 'sent' ? 'New Confession' : 'Leave a Confession'}
         </button>
       </div>
 
@@ -469,7 +553,7 @@ function ConfessionsPage() {
               justifyContent: 'center',
               padding: '24px',
             }}
-            onClick={() => setShowComposer(false)}
+            onClick={closeComposer}
           >
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
@@ -490,9 +574,9 @@ function ConfessionsPage() {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <h3 style={{ fontFamily: 'var(--font-serif)', color: '#3D1A28', fontSize: '24px' }}>
-                  Write a Sealed Confession
+                  {editingItem ? 'Edit Your Confession' : 'Write a Sealed Confession'}
                 </h3>
-                <button onClick={() => setShowComposer(false)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer' }}>
+                <button type="button" onClick={closeComposer} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer' }}>
                   ✕
                 </button>
               </div>

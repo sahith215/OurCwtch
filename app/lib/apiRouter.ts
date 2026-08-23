@@ -312,16 +312,85 @@ export async function handleApiRequest(request: Request): Promise<Response> {
   // 13. Confessions
   if (path === '/api/confessions') {
     if (method === 'GET') {
-      const list = await db.query.confessions.findMany({ orderBy: [desc(confessions.createdAt)] })
+      const session = await auth.api.getSession({ headers: request.headers })
+      if (!session?.user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+
+      const role = (session.user as any).role as 'Husband' | 'Wife' | undefined
+      const scope = new URL(request.url).searchParams.get('scope')
+      const allConfessions = await db.query.confessions.findMany({
+        orderBy: [asc(confessions.createdAt), asc(confessions.id)],
+      })
+      const list = allConfessions
+        .map((confession, index) => ({ ...confession, confessionNumber: index + 1 }))
+        .filter((confession) => scope === 'sent' && role
+          ? confession.authorRole === role
+          : scope === 'field' && role
+            ? confession.authorRole === (role === 'Husband' ? 'Wife' : 'Husband')
+            : true)
       return Response.json(list)
     }
     if (method === 'POST') {
-      const body = await request.json().catch(() => ({}))
       const session = await auth.api.getSession({ headers: request.headers })
-      const authorRole = (session?.user as any)?.role || 'Husband'
+      if (!session?.user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+
+      const body = await request.json().catch(() => ({}))
+      if (!body.body?.trim()) return Response.json({ error: 'Confession text is required' }, { status: 400 })
+      if (!['sweet', 'shy', 'flirty', 'vulnerable'].includes(body.toneTag)) {
+        return Response.json({ error: 'Invalid tone tag' }, { status: 400 })
+      }
+      const authorRole = ((session.user as any).role || 'Husband') as 'Husband' | 'Wife'
       const id = crypto.randomUUID()
-      await db.insert(confessions).values({ id, authorRole, ...body })
-      return Response.json({ id, authorRole, ...body })
+      const confession = {
+        id,
+        authorRole,
+        body: body.body.trim(),
+        toneTag: body.toneTag,
+        revealAt: body.revealAt || new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+      }
+      await db.insert(confessions).values(confession)
+      const orderedConfessions = await db.query.confessions.findMany({
+        orderBy: [asc(confessions.createdAt), asc(confessions.id)],
+      })
+      const confessionNumber = orderedConfessions.findIndex((entry) => entry.id === id) + 1
+      return Response.json({ ...confession, confessionNumber })
+    }
+    if (method === 'PUT' || method === 'PATCH') {
+      const session = await auth.api.getSession({ headers: request.headers })
+      if (!session?.user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+
+      const body = await request.json().catch(() => ({}))
+      if (!body.id || !body.body?.trim()) return Response.json({ error: 'ID and confession text are required' }, { status: 400 })
+      if (!['sweet', 'shy', 'flirty', 'vulnerable'].includes(body.toneTag)) {
+        return Response.json({ error: 'Invalid tone tag' }, { status: 400 })
+      }
+
+      const role = (session.user as any).role as 'Husband' | 'Wife' | undefined
+      const existing = await db.query.confessions.findFirst({ where: eq(confessions.id, body.id) })
+      if (!existing) return Response.json({ error: 'Confession not found' }, { status: 404 })
+      if (!role || existing.authorRole !== role) return Response.json({ error: 'Only the author can edit this confession' }, { status: 403 })
+
+      const updated = {
+        body: body.body.trim(),
+        toneTag: body.toneTag,
+        revealAt: body.revealAt || existing.revealAt,
+      }
+      await db.update(confessions).set(updated).where(eq(confessions.id, body.id))
+      return Response.json({ ...existing, ...updated })
+    }
+    if (method === 'DELETE') {
+      const session = await auth.api.getSession({ headers: request.headers })
+      if (!session?.user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+
+      const id = new URL(request.url).searchParams.get('id')
+      if (!id) return Response.json({ error: 'ID required' }, { status: 400 })
+      const role = (session.user as any).role as 'Husband' | 'Wife' | undefined
+      const existing = await db.query.confessions.findFirst({ where: eq(confessions.id, id) })
+      if (!existing) return Response.json({ error: 'Confession not found' }, { status: 404 })
+      if (!role || existing.authorRole !== role) return Response.json({ error: 'Only the author can delete this confession' }, { status: 403 })
+
+      await db.delete(confessions).where(eq(confessions.id, id))
+      return Response.json({ success: true })
     }
   }
 
