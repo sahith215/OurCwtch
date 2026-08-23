@@ -10,7 +10,9 @@ export const HillDivider: React.FC = () => {
         height: '80px',
         overflow: 'hidden',
         position: 'relative',
-        margin: '32px 0 32px calc(50% - 50vw)',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        margin: '32px 0',
       }}
     >
       <svg
